@@ -17,7 +17,7 @@
 (defn roll-dice []
   (+ (inc (rand-int 6)) (inc (rand-int 6))))
 
-(defn pay
+(defn deduct
   ([moneys player amount]
      (update-in moneys [player] - amount))
   ([moneys roll amount cards]
@@ -34,36 +34,41 @@
 (defn scratch-horse [horses roll amount]
   (assoc horses roll {:scratched amount}))
 
-(defn pay-scratch [[moneys cards horses [p & ps] [r & rs] cost-seq]]
-  (let [cost (:scratched (horses r))]
-    [(-> moneys (pay p cost) (add-to-pot cost))
-     cards
-     horses
-     ps
-     rs
-     cost-seq]))
+(defn pay-scratch [{:keys [moneys horses player-seq roll-seq] :as state}]
+  (let [[p & ps] player-seq
+        [r & rs] roll-seq
+        cost (:scratched (horses r))]
+    (assoc state
+      :moneys (-> moneys (deduct p cost) (add-to-pot cost))
+      :player-seq ps
+      :roll-seq rs)))
 
-(defn new-scratch [[moneys cards horses [_ & ps] [r & rs] [c & cs]]]
-  [(-> moneys (pay r c cards) (add-to-pot (* c 4)))
-   (discard cards r)
-   (scratch-horse horses r c)
-   ps
-   rs
-   cs])
+(defn new-scratch [{:keys [moneys cards horses player-seq roll-seq costs]
+                    :as state}]
+  (let [[r & rs] roll-seq
+        [c & cs] costs]
+    (assoc state
+      :moneys (-> moneys (deduct r c cards) (add-to-pot (* c 4)))
+      :cards (discard cards r)
+      :horses (scratch-horse horses r c)
+      :player-seq (rest player-seq)
+      :roll-seq rs
+      :costs cs)))
 
-(defn scratch [[moneys cards horses players [r & _] cost-seq :as state]]
-  (cond
-   (empty? cost-seq) state
-   (:scratched (horses r)) (pay-scratch state)
-   :else (new-scratch state)))
+(defn scratched? [{:keys [costs]}]
+  (empty? costs))
 
-(defn scratched? [[_ _ _ _ _ cost-seq]]
-  (empty? cost-seq))
+(defn scratch [{:keys [horses roll-seq] :as state}]
+  (let [rolled-horse (horses (first roll-seq))]
+    (cond
+     (scratched? state) state
+     (:scratched rolled-horse) (pay-scratch state)
+     :else (new-scratch state))))
 
 (defn get-history [condition f state]
   (let [states (iterate f state)
-        [not-done [done & _]] (split-with (complement condition) states)]
-    (concat not-done [done])))
+        [not-dones [done & _]] (split-with (complement condition) states)]
+    (concat not-dones [done])))
 
 ;; Player names
 (def names [:alice :bob :charlie])
@@ -75,9 +80,9 @@
 (def player-seq (cycle names))
 ;;(def roll-seq (repeatedly roll-dice))
 (def roll-seq [2 3 4 5])
-(def cost-seq [5 10 15 20])
+(def costs [5 10 15 20])
 
-(defn print-state [[moneys cards horses _ _ _]]
+(defn print-state [{:keys [moneys cards horses]}]
   (println "Moneys:" moneys)
   (println "Cards:" cards)
   (println "Horses:" horses)
@@ -88,5 +93,6 @@
     (print-state s)))
 
 ;; Test generating scratch history
-(let [state [moneys cards horses player-seq roll-seq cost-seq]]
+(let [state {:moneys moneys :cards cards :horses horses
+             :player-seq player-seq :roll-seq roll-seq :costs costs}]
   (print-states (get-history scratched? scratch state)))
