@@ -1,4 +1,4 @@
-(ns game
+(ns engine
   (:use [clojure.contrib.generic.functor :only (fmap)])
   (:use [clojure.contrib.math :only (ceil)])
   (:use [util :only (count-if)]))
