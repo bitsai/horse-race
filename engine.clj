@@ -92,6 +92,9 @@
   (doseq [s states]
     (print-state s)))
 
+(defn advance-horse [horses x]
+  (update-in horses [x :position] inc))
+
 ;; Test generating scratch history
 (let [state {:moneys moneys :cards cards :horses horses
              :player-seq player-seq :roll-seq roll-seq :costs costs}]
