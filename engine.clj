@@ -34,6 +34,9 @@
 (defn scratch-horse [horses roll amount]
   (assoc horses roll {:scratched amount}))
 
+(defn advance-horse [horses roll]
+  (update-in horses [roll :position] inc))
+
 (defn next-turn [{:keys [player-seq roll-seq] :as state}]
   (assoc state
     :player-seq (rest player-seq)
@@ -66,6 +69,17 @@
                 (:scratched horse) (pay-scratch state)
                 :else (new-scratch state)))))
 
+(defn move-horse [{:keys [horses roll-seq] :as state}]
+  (let [roll (first roll-seq)]
+    (assoc state
+      :horses (-> horses (advance-horse roll)))))
+
+(defn play-turn [{:keys [horses roll-seq] :as state}]
+  (let [horse (horses (first roll-seq))]
+    (next-turn (if (:scratched horse)
+                 (pay-scratch state)
+                 (move-horse state)))))
+
 (defn get-history [condition f state]
   (let [states (iterate f state)
         [not-dones [done & _]] (split-with (complement condition) states)]
@@ -92,9 +106,6 @@
 (defn print-states [states]
   (doseq [s states]
     (print-state s)))
-
-(defn advance-horse [horses x]
-  (update-in horses [x :position] inc))
 
 ;; Test generating scratch history
 (let [state {:moneys moneys :cards cards :horses horses
