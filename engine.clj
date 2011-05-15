@@ -34,36 +34,37 @@
 (defn scratch-horse [horses roll amount]
   (assoc horses roll {:scratched amount}))
 
-(defn pay-scratch [{:keys [moneys horses player-seq roll-seq] :as state}]
-  (let [[p & ps] player-seq
-        [r & rs] roll-seq
-        cost (:scratched (horses r))]
-    (assoc state
-      :moneys (-> moneys (deduct p cost) (add-to-pot cost))
-      :player-seq ps
-      :roll-seq rs)))
+(defn next-turn [{:keys [player-seq roll-seq] :as state}]
+  (assoc state
+    :player-seq (rest player-seq)
+    :roll-seq (rest roll-seq)))
 
-(defn new-scratch [{:keys [moneys cards horses player-seq roll-seq costs]
-                    :as state}]
-  (let [[r & rs] roll-seq
-        [c & cs] costs]
+(defn pay-scratch [{:keys [moneys horses player-seq roll-seq] :as state}]
+  (let [player (first player-seq)
+        roll (first roll-seq)
+        cost (:scratched (horses roll))]
     (assoc state
-      :moneys (-> moneys (deduct r c cards) (add-to-pot (* c 4)))
-      :cards (discard cards r)
-      :horses (scratch-horse horses r c)
-      :player-seq (rest player-seq)
-      :roll-seq rs
-      :costs cs)))
+      :moneys (-> moneys (deduct player cost) (add-to-pot cost)))))
+
+(defn new-scratch [{:keys [moneys cards horses roll-seq costs] :as state}]
+  (let [roll (first roll-seq)
+        cost (first costs)]
+    (assoc state
+      :moneys (-> moneys (deduct roll cost cards) (add-to-pot (* cost 4)))
+      :cards (-> cards (discard roll))
+      :horses (-> horses (scratch-horse roll cost))
+      :costs (rest costs))))
 
 (defn scratched? [{:keys [costs]}]
   (empty? costs))
 
 (defn scratch [{:keys [horses roll-seq] :as state}]
-  (let [rolled-horse (horses (first roll-seq))]
-    (cond
-     (scratched? state) state
-     (:scratched rolled-horse) (pay-scratch state)
-     :else (new-scratch state))))
+  (let [roll (first roll-seq)
+        horse (horses roll)]
+    (next-turn (cond
+                (scratched? state) state
+                (:scratched horse) (pay-scratch state)
+                :else (new-scratch state)))))
 
 (defn get-history [condition f state]
   (let [states (iterate f state)
