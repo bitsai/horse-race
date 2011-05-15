@@ -7,12 +7,18 @@
 (def ranks (range 2 13))
 (def deck (apply concat (repeat 4 ranks)))
 (def finish-line (zipmap ranks [3 4 5 6 7 8 7 6 5 4 3]))
+(def scratch-costs [5 10 15 20])
 
 ;; Game functions
-(defn deal [deck names]
-  (let [hand-size (ceil (/ (count deck) (count names)))
-        hands (partition-all hand-size deck)]
-    (zipmap names hands)))
+(defn init-moneys [names]
+  (-> (zipmap names (repeat 100)) (assoc :pot 0)))
+
+(defn init-cards [names]
+  (let [cards-per-player (ceil (/ (count deck) (count names)))]
+    (zipmap names (partition-all cards-per-player deck))))
+
+(defn init-horses []
+  (zipmap ranks (repeat {:position 0})))
 
 (defn roll-dice []
   (+ (inc (rand-int 6)) (inc (rand-int 6))))
@@ -85,18 +91,6 @@
         [not-dones [done & _]] (split-with (complement condition) states)]
     (concat not-dones [done])))
 
-;; Player names
-(def names [:alice :bob :charlie])
-
-;; Game state
-(def moneys (-> (zipmap names (repeat 100)) (assoc :pot 0)))
-(def cards (deal deck names))
-(def horses (zipmap ranks (repeat {:position 0})))
-(def player-seq (cycle names))
-;;(def roll-seq (repeatedly roll-dice))
-(def roll-seq [2 3 4 5])
-(def costs [5 10 15 20])
-
 (defn print-state [{:keys [moneys cards horses]}]
   (println "Moneys:" moneys)
   (println "Cards:" cards)
@@ -106,8 +100,3 @@
 (defn print-states [states]
   (doseq [s states]
     (print-state s)))
-
-;; Test generating scratch history
-(let [state {:moneys moneys :cards cards :horses horses
-             :player-seq player-seq :roll-seq roll-seq :costs costs}]
-  (print-states (get-history scratched? scratch state)))
