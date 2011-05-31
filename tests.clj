@@ -7,5 +7,5 @@
              :horses (init-horses)
              :player-seq (cycle names)
              ;; :roll-seq (repeatedly roll-dice)
-             :roll-seq (range 2 10)}]
+             :roll-seq [2 3 4 5]}]
   (print-states (get-scratch-history state)))

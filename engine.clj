@@ -100,7 +100,7 @@
 ;; History functions
 (defn get-history [done? f state]
   (let [states (iterate f state)
-        [not-dones [done & _]] (split-with (complement done?) states)]
+        [not-dones [done]] (split-with (complement done?) states)]
     (concat not-dones [done])))
 
 (defn get-scratch-history [state]
