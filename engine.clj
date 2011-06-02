@@ -1,7 +1,7 @@
 (ns engine
   (:use [clojure.contrib.generic.functor :only (fmap)])
   (:use [clojure.contrib.math :only (ceil)])
-  (:use [util :only (any? count-if)]))
+  (:use [util :only (count-if)]))
 
 ;; Game parameters
 (def ranks (range 2 13))
@@ -61,7 +61,7 @@
   (= 4 (count-scratched-horses horses)))
 
 (defn race-done? [{:keys [horses]}]
-  (any?
+  (some
    (fn [[horse-num {:keys [position]}]]
      (= position (finish-line horse-num)))
    horses))
