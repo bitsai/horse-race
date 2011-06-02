@@ -116,7 +116,14 @@
 (defn print-state [{:keys [moneys cards horses]}]
   (println "Moneys:" moneys)
   (println "Cards:" cards)
-  (println "Horses:" horses)
+  (doseq [[i {:keys [status position]}] horses]
+    (println
+     "Horse" (format "%1$2s" i)
+     (str
+      (apply str (repeat position "-"))
+      (if (= status :alive) "O" "X")
+      (apply str (repeat (- 8 position) "-")))
+     (if (= status :scratched) (get-scratch-cost position) "")))
   (newline))
 
 (defn print-history [states]
