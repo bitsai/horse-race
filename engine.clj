@@ -47,11 +47,11 @@
 (defn advance-horse [horses i]
   (update-in horses [i :position] inc))
 
+(defn scratched-horse? [horse]
+  (= (:status horse) :scratched))
+
 (defn count-scratched [horses]
-  (count-if
-   (fn [[_ {:keys [status]}]]
-     (= status :scratched))
-   horses))
+  (count-if (fn [[_ horse]] (scratched-horse? horse)) horses))
 
 (defn new-scratch-position [horses]
   (inc (count-scratched horses)))
@@ -60,15 +60,14 @@
   (* position 5))
 
 ;; Game state predicates
-(defn scratch-done? [{:keys [horses]}]
+(defn scratched-state? [{:keys [horses]}]
   (= (count-scratched horses) 4))
 
-(defn race-done? [{:keys [horses]}]
+(defn race-finished? [{:keys [horses]}]
   (some
    (fn [[i {:keys [status position]}]]
-     (and
-      (= status :alive)
-      (= position (finish-line i))))
+     (and (= status :alive)
+          (= position (finish-line i))))
    horses))
 
 ;; Game state-updating functions
@@ -99,33 +98,31 @@
   (let [roll (first roll-seq)
         horse (horses roll)]
     (next-turn
-     (cond (= (:status horse) :scratched) (-> state (pay-scratch horse))
-           (scratch-done? state) (-> state (move-horse roll))
+     (cond (scratched-horse? horse) (-> state (pay-scratch horse))
+           (scratched-state? state) (-> state (move-horse roll))
            :else (-> state (new-scratch roll))))))
 
 ;; History functions
-(defn get-history [done? f state]
+(defn get-history [finished? f state]
   (let [states (iterate f state)
-        [not-dones [done]] (split-with (complement done?) states)]
-    (concat not-dones [done])))
+        [unfinished [finished]] (split-with (complement finished?) states)]
+    (concat unfinished [finished])))
 
 (defn get-race-history [state]
-  (get-history race-done? play-turn state))
+  (get-history race-finished? play-turn state))
 
 ;; Output functions
 (defn print-state [{:keys [moneys cards horses]}]
   (println "Moneys:" moneys)
   (println "Cards:" cards)
   (doseq [[i {:keys [status position]}] horses]
-    (println
-     "Horse" (format "%1$2s" i)
-     (str
-      (apply str (repeat position "-"))
-      (if (= status :alive) "O" "X")
-      (apply str (repeat (- 8 position) "-")))
-     (if (= status :scratched) (get-scratch-cost position) "")))
+    (println "Horse"
+             (format "%1$2s" i)
+             (str (apply str (repeat position "-"))
+                  (if (= status :alive) "O" "X")
+                  (apply str (repeat (- 8 position) "-")))
+             (if (= status :scratched) (get-scratch-cost position) "")))
   (newline))
 
 (defn print-history [states]
-  (doseq [s states]
-    (print-state s)))
+  (doseq [s states] (print-state s)))
