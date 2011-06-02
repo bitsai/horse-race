@@ -6,7 +6,6 @@
                                 (init-cards names)
                                 (init-horses)
                                 (cycle names)
-                                ;; (repeatedly roll-dice)
-                                [2 3 4 5]
+                                (repeatedly roll-dice)
                                 [])]
-  (print-states (get-scratch-history state)))
+  (print-history (get-race-history state)))
