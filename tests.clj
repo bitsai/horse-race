@@ -8,4 +8,4 @@
                                 (cycle names)
                                 (repeatedly roll-dice)
                                 [])]
-  (print-history (get-race-history state)))
+  (print-history (race-history state)))

@@ -1,4 +1,5 @@
 (ns engine
+  (:require [clojure.contrib.string :as str])
   (:use [clojure.contrib.generic.functor :only (fmap)])
   (:use [clojure.contrib.math :only (ceil)])
   (:use [util :only (count-if)]))
@@ -30,7 +31,7 @@
 (defn pay [moneys player cost]
   (update-in moneys [player] - cost))
 
-(defn pay-all [moneys card cost cards]
+(defn all-pay [moneys card cost cards]
   (into {} (for [[player money] moneys]
              (let [cards-held (count-if #{card} (cards player))]
                [player (- money (* cost cards-held))]))))
@@ -38,7 +39,7 @@
 (defn add-to-pot [moneys cost]
   (update-in moneys [:pot] + cost))
 
-(defn discard-all [cards card]
+(defn discard [cards card]
   (fmap #(remove #{card} %) cards))
 
 (defn scratch-horse [horses i position]
@@ -56,7 +57,7 @@
 (defn new-scratch-position [horses]
   (inc (count-scratched horses)))
 
-(defn get-scratch-cost [position]
+(defn scratch-cost [position]
   (* position 5))
 
 ;; Game state predicates
@@ -73,15 +74,15 @@
 ;; Game state-updating functions
 (defn new-scratch [{:keys [moneys cards horses] :as state} roll]
   (let [position (new-scratch-position horses)
-        cost (get-scratch-cost position)]
+        cost (scratch-cost position)]
     (assoc state
-      :moneys (-> moneys (pay-all roll cost cards) (add-to-pot (* cost 4)))
-      :cards (-> cards (discard-all roll))
+      :moneys (-> moneys (all-pay roll cost cards) (add-to-pot (* cost 4)))
+      :cards (-> cards (discard roll))
       :horses (-> horses (scratch-horse roll position)))))
 
 (defn pay-scratch [{:keys [moneys player-seq] :as state} horse]
   (let [player (first player-seq)
-        cost (get-scratch-cost (:position horse))]
+        cost (scratch-cost (:position horse))]
     (assoc state
       :moneys (-> moneys (pay player cost) (add-to-pot cost)))))
 
@@ -89,7 +90,7 @@
   (assoc state
     :horses (-> horses (advance-horse roll))))
 
-(defn next-turn [{:keys [player-seq roll-seq] :as state}]
+(defn advance-turn [{:keys [player-seq roll-seq] :as state}]
   (assoc state
     :player-seq (rest player-seq)
     :roll-seq (rest roll-seq)))
@@ -97,19 +98,19 @@
 (defn play-turn [{:keys [horses roll-seq] :as state}]
   (let [roll (first roll-seq)
         horse (horses roll)]
-    (next-turn
+    (advance-turn
      (cond (scratched-horse? horse) (-> state (pay-scratch horse))
            (scratched-state? state) (-> state (move-horse roll))
            :else (-> state (new-scratch roll))))))
 
 ;; History functions
-(defn get-history [finished? f state]
+(defn history [pred f state]
   (let [states (iterate f state)
-        [unfinished [finished]] (split-with (complement finished?) states)]
+        [unfinished [finished]] (split-with (complement pred) states)]
     (concat unfinished [finished])))
 
-(defn get-race-history [state]
-  (get-history race-finished? play-turn state))
+(defn race-history [state]
+  (history race-finished? play-turn state))
 
 ;; Output functions
 (defn print-state [{:keys [moneys cards horses]}]
@@ -118,10 +119,11 @@
   (doseq [[i {:keys [status position]}] horses]
     (println "Horse"
              (format "%1$2s" i)
-             (str (apply str (repeat position "-"))
-                  (if (= status :alive) "O" "X")
-                  (apply str (repeat (- 8 position) "-")))
-             (if (= status :scratched) (get-scratch-cost position) "")))
+             (if (= status :scratched)
+               (scratch-cost position)
+               (str (str/repeat position "-")
+                    "O"
+                    (str/repeat (- (finish-line i) position) "-")))))
   (newline))
 
 (defn print-history [states]
