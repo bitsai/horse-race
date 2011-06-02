@@ -66,7 +66,9 @@
 (defn race-done? [{:keys [horses]}]
   (some
    (fn [[i {:keys [status position]}]]
-     (= position (finish-line i)))
+     (and
+      (= status :alive)
+      (= position (finish-line i))))
    horses))
 
 ;; Game state-updating functions
