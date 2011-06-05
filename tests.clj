@@ -2,10 +2,5 @@
   (:use [engine]))
 
 (let [names [:alice :bob :charlie]
-      state (engine.game-state. (init-moneys names)
-                                (init-cards names)
-                                (init-horses)
-                                (cycle names)
-                                (repeatedly roll-dice)
-                                [])]
-  (print-history (race-history state)))
+      rolls (repeatedly roll-dice)]
+  (print-history (race-history (make-state names rolls))))

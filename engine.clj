@@ -9,25 +9,33 @@
 (def deck (apply concat (repeat 4 ranks)))
 (def finish-line (zipmap ranks [3 4 5 6 7 8 7 6 5 4 3]))
 
-(defrecord horse-state [status position])
-(defrecord game-state [moneys cards horses player-seq roll-seq log])
+;; State structures
+(defrecord HorseState [status position])
+(defrecord GameState [moneys cards horses player-seq roll-seq msg])
 
 ;; Init functions
 (defn init-moneys [names]
   (-> (zipmap names (repeat 100)) (assoc :pot 0)))
 
-;; re-think dealing logic? [Dale]
+;; Discuss this logic with Dale
 (defn init-cards [names]
   (let [cards-per-player (ceil (/ (count deck) (count names)))]
     (zipmap names (partition-all cards-per-player deck))))
 
 (defn init-horses []
-  (zipmap ranks (repeat (horse-state. :alive 0))))
+  (zipmap ranks (repeat (HorseState. :alive 0))))
 
 (defn roll-dice []
   (+ (inc (rand-int 6)) (inc (rand-int 6))))
 
-;; Utility functions
+;; Misc functions
+(defn scratched-horse? [{:keys [status]}]
+  (= status :scratched))
+
+(defn scratch-cost [position]
+  (* position 5))
+
+;; Moneys functions
 (defn pay [moneys player cost]
   (update-in moneys [player] - cost))
 
@@ -39,29 +47,25 @@
 (defn add-to-pot [moneys cost]
   (update-in moneys [:pot] + cost))
 
-(defn discard [cards card]
+;; Cards functions
+(defn all-discard [cards card]
   (fmap #(remove #{card} %) cards))
 
+;; Horses functions
 (defn scratch-horse [horses i position]
-  (assoc horses i (horse-state. :scratched position)))
+  (assoc horses i (HorseState. :scratched position)))
 
 (defn advance-horse [horses i]
   (update-in horses [i :position] inc))
 
-(defn scratched-horse? [horse]
-  (= (:status horse) :scratched))
-
 (defn count-scratched [horses]
-  (count-if (fn [[_ horse]] (scratched-horse? horse)) horses))
+  (count-if scratched-horse? (vals horses)))
 
 (defn new-scratch-position [horses]
   (inc (count-scratched horses)))
 
-(defn scratch-cost [position]
-  (* position 5))
-
 ;; Game state predicates
-(defn scratched-state? [{:keys [horses]}]
+(defn scratch-finished? [{:keys [horses]}]
   (= (count-scratched horses) 4))
 
 (defn race-finished? [{:keys [horses]}]
@@ -71,13 +75,13 @@
           (= position (finish-line i))))
    horses))
 
-;; Game state-updating functions
+;; Game state functions
 (defn new-scratch [{:keys [moneys cards horses] :as state} roll]
   (let [position (new-scratch-position horses)
         cost (scratch-cost position)]
     (assoc state
       :moneys (-> moneys (all-pay roll cost cards) (add-to-pot (* cost 4)))
-      :cards (-> cards (discard roll))
+      :cards (-> cards (all-discard roll))
       :horses (-> horses (scratch-horse roll position)))))
 
 (defn pay-scratch [{:keys [moneys player-seq] :as state} horse]
@@ -100,8 +104,16 @@
         horse (horses roll)]
     (advance-turn
      (cond (scratched-horse? horse) (-> state (pay-scratch horse))
-           (scratched-state? state) (-> state (move-horse roll))
+           (scratch-finished? state) (-> state (move-horse roll))
            :else (-> state (new-scratch roll))))))
+
+(defn make-state [names rolls]
+  (GameState. (init-moneys names)
+              (init-cards names)
+              (init-horses)
+              (cycle names)
+              rolls
+              ["New race!"]))
 
 ;; History functions
 (defn history [pred f state]
