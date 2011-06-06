@@ -11,16 +11,16 @@
 
 ;; State structures
 (defrecord HorseState [status position])
-(defrecord GameState [moneys cards horses player-seq roll-seq msg])
+(defrecord GameState [chips cards horses player-seq roll-seq log])
 
 ;; Init functions
-(defn init-moneys [names]
+(defn init-chips [names]
   (-> (zipmap names (repeat 100)) (assoc :pot 0)))
 
 ;; Discuss this logic with Dale
-(defn init-cards [names]
-  (let [cards-per-player (ceil (/ (count deck) (count names)))]
-    (zipmap names (partition-all cards-per-player deck))))
+(defn init-cards [names cards]
+  (let [cards-per-player (ceil (/ (count cards) (count names)))]
+    (zipmap names (partition-all cards-per-player cards))))
 
 (defn init-horses []
   (zipmap ranks (repeat (HorseState. :alive 0))))
@@ -35,17 +35,17 @@
 (defn scratch-cost [position]
   (* position 5))
 
-;; Moneys functions
-(defn pay [moneys player cost]
-  (update-in moneys [player] - cost))
+;; Chips functions
+(defn pay [chips player cost]
+  (update-in chips [player] - cost))
 
-(defn all-pay [moneys card cost cards]
-  (into {} (for [[player money] moneys]
+(defn all-pay [chips card cost cards]
+  (into {} (for [[player player-chips] chips]
              (let [cards-held (count-if #{card} (cards player))]
-               [player (- money (* cost cards-held))]))))
+               [player (- player-chips (* cost cards-held))]))))
 
-(defn add-to-pot [moneys cost]
-  (update-in moneys [:pot] + cost))
+(defn add-to-pot [chips cost]
+  (update-in chips [:pot] + cost))
 
 ;; Cards functions
 (defn all-discard [cards card]
@@ -76,23 +76,36 @@
    horses))
 
 ;; Game state functions
-(defn new-scratch [{:keys [moneys cards horses] :as state} roll]
+(defn show-player-roll [{:keys [player-seq roll-seq]}]
+  (let [player (first player-seq)
+        roll (first roll-seq)]
+    (str player " rolled a " roll)))
+
+(defn new-scratch [{:keys [chips cards horses] :as state} roll]
   (let [position (new-scratch-position horses)
         cost (scratch-cost position)]
     (assoc state
-      :moneys (-> moneys (all-pay roll cost cards) (add-to-pot (* cost 4)))
+      :chips (-> chips (all-pay roll cost cards) (add-to-pot (* cost 4)))
       :cards (-> cards (all-discard roll))
-      :horses (-> horses (scratch-horse roll position)))))
+      :horses (-> horses (scratch-horse roll position))
+      :log (str (show-player-roll state) "; "
+                "horse " roll " got scratched, "
+                "everyone paid " cost "/card"))))
 
-(defn pay-scratch [{:keys [moneys player-seq] :as state} horse]
+(defn pay-scratch [{:keys [chips horses player-seq] :as state} roll]
   (let [player (first player-seq)
-        cost (scratch-cost (:position horse))]
+        cost (scratch-cost (:position (horses roll)))]
     (assoc state
-      :moneys (-> moneys (pay player cost) (add-to-pot cost)))))
+      :chips (-> chips (pay player cost) (add-to-pot cost))
+      :log (str (show-player-roll state) "; "
+                "horse " roll " already scratched, "
+                player " paid " cost))))
 
 (defn move-horse [{:keys [horses] :as state} roll]
   (assoc state
-    :horses (-> horses (advance-horse roll))))
+    :horses (-> horses (advance-horse roll))
+    :log (str (show-player-roll state) "; "
+              "horse " roll " advanced")))
 
 (defn advance-turn [{:keys [player-seq roll-seq] :as state}]
   (assoc state
@@ -100,20 +113,19 @@
     :roll-seq (rest roll-seq)))
 
 (defn play-turn [{:keys [horses roll-seq] :as state}]
-  (let [roll (first roll-seq)
-        horse (horses roll)]
+  (let [roll (first roll-seq)]
     (advance-turn
-     (cond (scratched-horse? horse) (-> state (pay-scratch horse))
+     (cond (scratched-horse? (horses roll)) (-> state (pay-scratch roll))
            (scratch-finished? state) (-> state (move-horse roll))
            :else (-> state (new-scratch roll))))))
 
-(defn make-state [names rolls]
-  (GameState. (init-moneys names)
-              (init-cards names)
+(defn make-state [names cards roll-seq]
+  (GameState. (init-chips names)
+              (init-cards names cards)
               (init-horses)
               (cycle names)
-              rolls
-              ["New race!"]))
+              roll-seq
+              "New race started"))
 
 ;; History functions
 (defn history [pred f state]
@@ -125,8 +137,9 @@
   (history race-finished? play-turn state))
 
 ;; Output functions
-(defn print-state [{:keys [moneys cards horses]}]
-  (println "Moneys:" moneys)
+(defn print-state [{:keys [chips cards horses log]}]
+  (println "Log:" log)
+  (println "Chips:" chips)
   (println "Cards:" cards)
   (doseq [[i {:keys [status position]}] horses]
     (println "Horse"

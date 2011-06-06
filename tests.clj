@@ -1,6 +1,7 @@
 (ns tests
   (:use [engine]))
 
-(let [names [:alice :bob :charlie]
+(let [names ["Alice" "Bob" "Charlie"]
+      cards (shuffle deck)
       rolls (repeatedly roll-dice)]
-  (print-history (race-history (make-state names rolls))))
+  (print-history (race-history (make-state names cards rolls))))
