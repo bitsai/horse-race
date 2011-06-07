@@ -2,6 +2,7 @@
   (:require [clojure.contrib.string :as str])
   (:use [clojure.contrib.generic.functor :only (fmap)])
   (:use [clojure.contrib.math :only (ceil)])
+  (:use [clojure.contrib.seq :only (find-first)])
   (:use [util :only (count-if)]))
 
 ;; Game parameters
@@ -10,7 +11,7 @@
 (def finish-line (zipmap ranks [3 4 5 6 7 8 7 6 5 4 3]))
 
 ;; State structures
-(defrecord HorseState [status position])
+(defrecord HorseState [number status position finish])
 (defrecord GameState [chips cards horses player-seq roll-seq log])
 
 ;; Init functions
@@ -23,17 +24,23 @@
     (zipmap names (partition-all cards-per-player cards))))
 
 (defn init-horses []
-  (zipmap ranks (repeat (HorseState. :alive 0))))
+  (into {} (for [i ranks]
+             [i (HorseState. i :alive 0 (finish-line i))])))
 
 (defn roll-dice []
   (+ (inc (rand-int 6)) (inc (rand-int 6))))
 
 ;; Misc functions
+(defn scratch-cost [position]
+  (* position 5))
+
+;; Horse state predicates
 (defn scratched-horse? [{:keys [status]}]
   (= status :scratched))
 
-(defn scratch-cost [position]
-  (* position 5))
+(defn winning-horse? [{:keys [status position finish]}]
+  (and (= status :alive)
+       (= position finish)))
 
 ;; Chips functions
 (defn pay [chips player cost]
@@ -53,7 +60,7 @@
 
 ;; Horses functions
 (defn scratch-horse [horses i position]
-  (assoc horses i (HorseState. :scratched position)))
+  (assoc horses i (HorseState. i :scratched position nil)))
 
 (defn advance-horse [horses i]
   (update-in horses [i :position] inc))
@@ -69,11 +76,7 @@
   (= (count-scratched horses) 4))
 
 (defn race-finished? [{:keys [horses]}]
-  (some
-   (fn [[i {:keys [status position]}]]
-     (and (= status :alive)
-          (= position (finish-line i))))
-   horses))
+  (some winning-horse? (vals horses)))
 
 ;; Game state functions
 (defn show-player-roll [{:keys [player-seq roll-seq]}]
@@ -141,15 +144,25 @@
   (println "Log:" log)
   (println "Chips:" chips)
   (println "Cards:" cards)
-  (doseq [[i {:keys [status position]}] horses]
+  (doseq [{:keys [number status position finish]} (vals horses)]
     (println "Horse"
-             (format "%1$2s" i)
+             (format "%1$2s" number)
              (if (= status :scratched)
                (scratch-cost position)
                (str (str/repeat position "-")
                     "O"
-                    (str/repeat (- (finish-line i) position) "-")))))
+                    (str/repeat (- finish position) "-")))))
   (newline))
 
 (defn print-history [states]
   (doseq [s states] (print-state s)))
+
+(defn print-end-game [{:keys [chips cards horses]}]
+  (let [winner-number (:number (find-first winning-horse? (vals horses)))
+        chips-per-share (/ (chips :pot) 4.0)]
+    (println "Horse" winner-number "won!")
+    (doseq [[player player-cards] cards]
+      (let [shares (count-if #{winner-number} player-cards)
+            winnings (* chips-per-share shares)]
+        (println player "won" winnings ";"
+                 "final total =" (+ winnings (chips player)))))))
