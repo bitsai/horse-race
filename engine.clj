@@ -1,9 +1,5 @@
 (ns engine
-  (:require [clojure.contrib.string :as str])
-  (:use [clojure.contrib.generic.functor :only (fmap)])
-  (:use [clojure.contrib.math :only (ceil)])
-  (:use [clojure.contrib.seq :only (find-first)])
-  (:use [util :only (count-if)]))
+  (:use [util :only (count-if find-first)]))
 
 ;; Game parameters
 (def ranks (range 2 13))
@@ -18,10 +14,9 @@
 (defn init-chips [names]
   (-> (zipmap names (repeat 100)) (assoc :pot 0)))
 
-;; Discuss this logic with Dale
 (defn init-cards [names cards]
-  (let [cards-per-player (ceil (/ (count cards) (count names)))]
-    (zipmap names (partition-all cards-per-player cards))))
+  (let [n (java.lang.Math/ceil (/ (count cards) (count names)))]
+    (zipmap names (partition-all n cards))))
 
 (defn init-horses []
   (into {} (for [i ranks]
@@ -56,7 +51,8 @@
 
 ;; Cards functions
 (defn all-discard [cards card]
-  (fmap #(remove #{card} %) cards))
+  (into {} (for [[player player-cards] cards]
+             [player (remove #{card} player-cards)])))
 
 ;; Horses functions
 (defn scratch-horse [horses i position]
@@ -149,20 +145,20 @@
              (format "%1$2s" number)
              (if (= status :scratched)
                (scratch-cost position)
-               (str (str/repeat position "-")
+               (str (apply str (repeat position \-))
                     "O"
-                    (str/repeat (- finish position) "-")))))
+                    (apply str (repeat (- finish position) \-))))))
   (newline))
 
 (defn print-history [states]
   (doseq [s states] (print-state s)))
 
 (defn print-end-game [{:keys [chips cards horses]}]
-  (let [winner-number (:number (find-first winning-horse? (vals horses)))
+  (let [winner (:number (find-first winning-horse? (vals horses)))
         chips-per-share (/ (chips :pot) 4.0)]
-    (println "Horse" winner-number "won!")
+    (println "Horse" winner "won!")
     (doseq [[player player-cards] cards]
-      (let [shares (count-if #{winner-number} player-cards)
+      (let [shares (count-if #{winner} player-cards)
             winnings (* chips-per-share shares)]
         (println player "won" winnings ";"
                  "final total =" (+ winnings (chips player)))))))
