@@ -15,7 +15,7 @@
   (-> (zipmap names (repeat 100)) (assoc :pot 0)))
 
 (defn init-cards [names cards]
-  (let [n (java.lang.Math/ceil (/ (count cards) (count names)))]
+  (let [n (Math/ceil (/ (count cards) (count names)))]
     (zipmap names (partition-all n cards))))
 
 (defn init-horses []
