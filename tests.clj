@@ -50,4 +50,4 @@
           3 (core.Horse. 2 true)
           4 (core.Horse. 3 true)})))
 
-(run-tests 'tests)
+(run-tests)
