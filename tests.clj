@@ -4,17 +4,17 @@
 
 ;; Player functions
 (deftest deal-cards
-  (is (= (core/deal-cards [(core.Player. "A" nil nil)
-                           (core.Player. "B" nil nil)
-                           (core.Player. "C" nil nil)]
-                          (range 10))
-         [(core.Player. "A" nil [0 3 6 9])
-          (core.Player. "B" nil [1 4 7])
-          (core.Player. "C" nil [2 5 8])])))
+  (is (= (core/deal-cards [(core.Player. "A" 0 [])
+                           (core.Player. "B" 0 [])
+                           (core.Player. "C" 0 [])]
+                          (range 2 12))
+         [(core.Player. "A" 0 [2 5 8 11])
+          (core.Player. "B" 0 [3 6 9])
+          (core.Player. "C" 0 [4 7 10])])))
 
 (deftest pay-cost
-  (is (= (core/pay-cost (core.Player. "A" 10 nil) 20)
-         [(core.Player. "A" 0 nil) 10])))
+  (is (= (core/pay-cost (core.Player. "A" 10 []) 20)
+         [(core.Player. "A" 0 []) 10])))
 
 (deftest pay-card
   (is (= (core/pay-card [(core.Player. "A" 50 [1 1])
@@ -28,38 +28,37 @@
           70])))
 
 (deftest discard-card
-  (is (= (core/discard-card [(core.Player. "A" nil [0 0 0])
-                             (core.Player. "B" nil [0 0 1])
-                             (core.Player. "C" nil [0 1 1])]
+  (is (= (core/discard-card [(core.Player. "A" 0 [0 0 0])
+                             (core.Player. "B" 0 [0 0 1])
+                             (core.Player. "C" 0 [0 1 1])]
                             1)
-         [(core.Player. "A" nil [0 0 0])
-          (core.Player. "B" nil [0 0])
-          (core.Player. "C" nil [0])])))
+         [(core.Player. "A" 0 [0 0 0])
+          (core.Player. "B" 0 [0 0])
+          (core.Player. "C" 0 [0])])))
 
 ;; Horse functions
 (deftest count-scratched
-  (is (= (core/count-scratched {2 (core.Horse. nil false)
-                                3 (core.Horse. nil true)
-                                4 (core.Horse. nil true)})
+  (is (= (core/count-scratched {2 (core.Horse. 0 false)
+                                3 (core.Horse. 1 true)
+                                4 (core.Horse. 2 true)})
          2)))
 
 (deftest scratch-horse
-  (is (= (core/scratch-horse {2 (core.Horse. nil nil)
-                              3 (core.Horse. nil nil)
-                              4 (core.Horse. nil nil)}
-                             2
-                             1)
-         {2 (core.Horse. 1 true)
-          3 (core.Horse. nil nil)
-          4 (core.Horse. nil nil)})))
+  (is (= (core/scratch-horse {2 (core.Horse. 0 false)
+                              3 (core.Horse. 1 true)
+                              4 (core.Horse. 2 true)}
+                             2)
+         {2 (core.Horse. 3 true)
+          3 (core.Horse. 1 true)
+          4 (core.Horse. 2 true)})))
 
 ;; Game functions
 (deftest new-game
-  (is (= (core/new-game ["A" "B" "C"] 20 (range 10) [0])
+  (is (= (core/new-game ["A" "B" "C"] 20 (range 2 12) [2 3 4])
          (core.Game. 0
-                     [(core.Player. "A" 20 [0 3 6 9])
-                      (core.Player. "B" 20 [1 4 7])
-                      (core.Player. "C" 20 [2 5 8])]
+                     [(core.Player. "A" 20 [2 5 8 11])
+                      (core.Player. "B" 20 [3 6 9])
+                      (core.Player. "C" 20 [4 7 10])]
                      {2 (core.Horse. 0 false)
                       3 (core.Horse. 0 false)
                       4 (core.Horse. 0 false)
@@ -71,63 +70,153 @@
                       10 (core.Horse. 0 false)
                       11 (core.Horse. 0 false)
                       12 (core.Horse. 0 false)}
-                     [0]))))
+                     [2 3 4]))))
 
 (deftest reset-game
   (is (= (core/reset-game (core.Game. 10
-                                      [(core.Player. "A" nil nil)
-                                       (core.Player. "B" nil nil)
-                                       (core.Player. "C" nil nil)]
-                                      nil
-                                      nil)
-                          (range 10))
+                                      [(core.Player. "A" 0 [])
+                                       (core.Player. "B" 0 [])
+                                       (core.Player. "C" 0 [])]
+                                      {}
+                                      [])
+                          (range 2 12))
          (core.Game. 0
-                     [(core.Player. "A" nil [0 3 6 9])
-                      (core.Player. "B" nil [1 4 7])
-                      (core.Player. "C" nil [2 5 8])]
-                     nil
-                     nil))))
-
-(deftest advance-horse
-  (is (= (core/advance-horse (core.Game. nil
-                                         nil
-                                         {2 (core.Horse. 0 false)
-                                          3 (core.Horse. 0 false)
-                                          4 (core.Horse. 0 false)}
-                                         [2]))
-         (core.Game. nil
-                     nil
-                     {2 (core.Horse. 1 false)
-                      3 (core.Horse. 0 false)
-                      4 (core.Horse. 0 false)}
-                     [2]))))
+                     [(core.Player. "A" 0 [2 5 8 11])
+                      (core.Player. "B" 0 [3 6 9])
+                      (core.Player. "C" 0 [4 7 10])]
+                     {}
+                     []))))
 
 (deftest advance-player
-  (is (= (core/advance-player (core.Game. nil
-                                          [(core.Player. "A" nil nil)
-                                           (core.Player. "B" nil nil)
-                                           (core.Player. "C" nil nil)]
-                                          nil
-                                          nil))
-         (core.Game. nil
-                     [(core.Player. "B" nil nil)
-                      (core.Player. "C" nil nil)
-                      (core.Player. "A" nil nil)]
-                     nil
-                     nil))))
+  (is (= (core/advance-player (core.Game. 0
+                                          [(core.Player. "A" 0 [])
+                                           (core.Player. "B" 0 [])
+                                           (core.Player. "C" 0 [])]
+                                          {}
+                                          []))
+         (core.Game. 0
+                     [(core.Player. "B" 0 [])
+                      (core.Player. "C" 0 [])
+                      (core.Player. "A" 0 [])]
+                     {}
+                     []))))
 
 (deftest advance-turn
-  (is (= (core/advance-turn (core.Game. nil
-                                        [(core.Player. "A" nil nil)
-                                         (core.Player. "B" nil nil)
-                                         (core.Player. "C" nil nil)]
-                                        nil
-                                        [0]))
-         (core.Game. nil
-                     [(core.Player. "B" nil nil)
-                      (core.Player. "C" nil nil)
-                      (core.Player. "A" nil nil)]
-                     nil
-                     []))))
+  (is (= (core/advance-turn (core.Game. 0
+                                        [(core.Player. "A" 0 [])
+                                         (core.Player. "B" 0 [])
+                                         (core.Player. "C" 0 [])]
+                                        {}
+                                        [2 3 4]))
+         (core.Game. 0
+                     [(core.Player. "B" 0 [])
+                      (core.Player. "C" 0 [])
+                      (core.Player. "A" 0 [])]
+                     {}
+                     [3 4]))))
+
+(deftest new-scratch
+  (is (= (core/new-scratch (core.Game. 0
+                                       [(core.Player. "A" 10 [2 2])
+                                        (core.Player. "B" 20 [2 3])
+                                        (core.Player. "C" 30 [2 4])]
+                                       {2 (core.Horse. 0 false)
+                                        3 (core.Horse. 1 true)}
+                                       [2 3 4]))
+         (core.Game. 30
+                     [(core.Player. "B" 10 [3])
+                      (core.Player. "C" 20 [4])
+                      (core.Player. "A" 0 [])]
+                     {2 (core.Horse. 2 true)
+                      3 (core.Horse. 1 true)}
+                     [3 4]))))
+
+(deftest pay-scratch
+  (is (= (core/pay-scratch (core.Game. 0
+                                       [(core.Player. "A" 5 [])
+                                        (core.Player. "B" 0 [])
+                                        (core.Player. "C" 0 [])]
+                                       {2 (core.Horse. 2 true)
+                                        3 (core.Horse. 1 true)}
+                                       [2 3 4]))
+         (core.Game. 5
+                     [(core.Player. "B" 0 [])
+                      (core.Player. "C" 0 [])
+                      (core.Player. "A" 0 [])]
+                     {2 (core.Horse. 2 true)
+                      3 (core.Horse. 1 true)}
+                     [3 4]))))
+
+(deftest advance-horse
+  (is (= (core/advance-horse (core.Game. 0
+                                         [(core.Player. "A" 0 [])
+                                          (core.Player. "B" 0 [])
+                                          (core.Player. "C" 0 [])]
+                                         {2 (core.Horse. 0 false)}
+                                         [2 3 4]))
+         (core.Game. 0
+                     [(core.Player. "B" 0 [])
+                      (core.Player. "C" 0 [])
+                      (core.Player. "A" 0 [])]
+                     {2 (core.Horse. 1 false)}
+                     [3 4]))))
+
+(deftest play-turn
+  (is (= (core/play-turn (core.Game. 0
+                                     [(core.Player. "A" 0 [])
+                                      (core.Player. "B" 0 [])
+                                      (core.Player. "C" 0 [])]
+                                     {}
+                                     [2 3 4]))
+         (core.Game. 0
+                     [(core.Player. "B" 0 [])
+                      (core.Player. "C" 0 [])
+                      (core.Player. "A" 0 [])]
+                     {}
+                     [2 3 4])))
+  (is (= (core/play-turn (core.Game. 0
+                                     [(core.Player. "A" 10 [])
+                                      (core.Player. "B" 0 [])
+                                      (core.Player. "C" 0 [])]
+                                     {2 (core.Horse. 1 true)}
+                                     [2 3 4]))
+         (core.Game. 5
+                     [(core.Player. "B" 0 [])
+                      (core.Player. "C" 0 [])
+                      (core.Player. "A" 5 [])]
+                     {2 (core.Horse. 1 true)}
+                     [3 4])))
+  (is (= (core/play-turn (core.Game. 0
+                                     [(core.Player. "A" 10 [])
+                                      (core.Player. "B" 0 [])
+                                      (core.Player. "C" 0 [])]
+                                     {2 (core.Horse. 0 false)
+                                      3 (core.Horse. 1 true)
+                                      4 (core.Horse. 2 true)
+                                      5 (core.Horse. 3 true)
+                                      6 (core.Horse. 4 true)}
+                                     [2 3 4]))
+         (core.Game. 0
+                     [(core.Player. "B" 0 [])
+                      (core.Player. "C" 0 [])
+                      (core.Player. "A" 10 [])]
+                     {2 (core.Horse. 1 false)
+                      3 (core.Horse. 1 true)
+                      4 (core.Horse. 2 true)
+                      5 (core.Horse. 3 true)
+                      6 (core.Horse. 4 true)}
+                     [3 4])))
+  (is (= (core/play-turn (core.Game. 0
+                                     [(core.Player. "A" 10 [2 2])
+                                      (core.Player. "B" 20 [2 3])
+                                      (core.Player. "C" 30 [2 4])]
+                                     {2 (core.Horse. 0 false)}
+                                     [2 3 4]))
+         (core.Game. 20
+                     [(core.Player. "B" 15 [3])
+                      (core.Player. "C" 25 [4])
+                      (core.Player. "A" 0 [])]
+                     {2 (core.Horse. 1 true)}
+                     [3 4]))))
 
 (run-tests)
