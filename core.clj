@@ -79,24 +79,24 @@
         cost (* 5 new-pos)
         roll (first rolls)
         [paid-players payment] (pay-card players roll cost)]
-    (advance-turn (assoc game
-                    :pot (+ pot payment)
-                    :players (discard-card paid-players roll)
-                    :horses (scratch-horse horses roll)))))
+    (assoc game
+      :pot (+ pot payment)
+      :players (discard-card paid-players roll)
+      :horses (scratch-horse horses roll))))
 
 (defn pay-scratch
   [game]
   (let [{:keys [pot players horses rolls]} game
         cost (* 5 (:position (horses (first rolls))))
         [paid-player payment] (pay-cost (first players) cost)]
-    (advance-turn (assoc game
-                    :pot (+ pot payment)
-                    :players (assoc players 0 paid-player)))))
+    (assoc game
+      :pot (+ pot payment)
+      :players (assoc players 0 paid-player))))
 
 (defn advance-horse
   [game]
   (let [roll (first (:rolls game))]
-    (advance-turn (update-in game [:horses roll :position] inc))))
+    (update-in game [:horses roll :position] inc)))
 
 (defn play-turn
   [game]
@@ -104,6 +104,6 @@
         player (first players)
         horse (horses (first rolls))]
     (cond (zero? (:chips player))        (advance-player game)
-          (:scratched? horse)            (pay-scratch game)
-          (= 4 (count-scratched horses)) (advance-horse game)
-          :else                          (new-scratch game))))
+          (:scratched? horse)            (advance-turn (pay-scratch game))
+          (= 4 (count-scratched horses)) (advance-turn (advance-horse game))
+          :else                          (advance-turn (new-scratch game)))))

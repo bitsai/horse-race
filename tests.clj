@@ -124,42 +124,34 @@
                                         3 (core.Horse. 1 true)}
                                        [2 3 4]))
          (core.Game. 30
-                     [(core.Player. "B" 10 [3])
-                      (core.Player. "C" 20 [4])
-                      (core.Player. "A" 0 [])]
+                     [(core.Player. "A" 0 [])
+                      (core.Player. "B" 10 [3])
+                      (core.Player. "C" 20 [4])]
                      {2 (core.Horse. 2 true)
                       3 (core.Horse. 1 true)}
-                     [3 4]))))
+                     [2 3 4]))))
 
 (deftest pay-scratch
   (is (= (core/pay-scratch (core.Game. 0
-                                       [(core.Player. "A" 5 [])
-                                        (core.Player. "B" 0 [])
-                                        (core.Player. "C" 0 [])]
+                                       [(core.Player. "A" 5 [])]
                                        {2 (core.Horse. 2 true)
                                         3 (core.Horse. 1 true)}
                                        [2 3 4]))
          (core.Game. 5
-                     [(core.Player. "B" 0 [])
-                      (core.Player. "C" 0 [])
-                      (core.Player. "A" 0 [])]
+                     [(core.Player. "A" 0 [])]
                      {2 (core.Horse. 2 true)
                       3 (core.Horse. 1 true)}
-                     [3 4]))))
+                     [2 3 4]))))
 
 (deftest advance-horse
   (is (= (core/advance-horse (core.Game. 0
-                                         [(core.Player. "A" 0 [])
-                                          (core.Player. "B" 0 [])
-                                          (core.Player. "C" 0 [])]
+                                         []
                                          {2 (core.Horse. 0 false)}
                                          [2 3 4]))
          (core.Game. 0
-                     [(core.Player. "B" 0 [])
-                      (core.Player. "C" 0 [])
-                      (core.Player. "A" 0 [])]
+                     []
                      {2 (core.Horse. 1 false)}
-                     [3 4]))))
+                     [2 3 4]))))
 
 (deftest play-turn
   (is (= (core/play-turn (core.Game. 0
