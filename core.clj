@@ -8,7 +8,15 @@
 (defrecord Horse [position scratched?])
 (defrecord Game [pot players horses rolls])
 
+(defn roll-dice
+  []
+  (+ (inc (rand-int 6)) (inc (rand-int 6))))
+
 ;; Player functions
+(defn dead?
+  [player]
+  (zero? (:chips player)))
+
 (defn deal-cards
   [players cards]
   (let [n (count players)]
@@ -16,6 +24,15 @@
                 (assoc p :cards (take-nth n (drop i cards))))
               (range)
               players))))
+
+(defn count-cards
+  [player rank]
+  (count (filter #{rank} (:cards player))))
+
+(defn discard-card
+  [players rank]
+  (vec (for [p players]
+         (update-in p [:cards] #(remove #{rank} %)))))
 
 (defn pay-cost
   [player cost]
@@ -27,17 +44,27 @@
 (defn pay-card
   [players rank cost]
   (let [player-payment (for [p players]
-                         (let [matches (filter #(= rank %) (:cards p))
-                               total-cost (* cost (count matches))]
-                           (pay-cost p total-cost)))
-        paid-players (map first player-payment)
+                         (let [p-cost (* cost (count-cards p rank))]
+                           (pay-cost p p-cost)))
+        paid-players (vec (map first player-payment))
         payment (apply + (map second player-payment))]
-    [(vec paid-players) payment]))
+    [paid-players payment]))
 
-(defn discard-card
-  [players rank]
-  (vec (for [p players]
-         (update-in p [:cards] #(remove #{rank} %)))))
+(defn pay-share
+  [player share]
+  (if (dead? player)
+    [player 0]
+    [(update-in player [:chips] + share) share]))
+
+(defn pay-pot
+  [players winner-num pot]
+  (let [share (/ pot 4)
+        player-payment (for [p players]
+                         (let [p-share (* share (count-cards p winner-num))]
+                           (pay-share p p-share)))
+        paid-players (vec (map first player-payment))
+        payment (apply + (map second player-payment))]
+    [paid-players (- pot payment)]))
 
 ;; Horse functions
 (defn count-scratched
@@ -45,23 +72,31 @@
   (count (filter #(:scratched? %) (vals horses))))
 
 (defn scratch-horse
-  [horses number]
+  [horses n]
   (let [new-pos (inc (count-scratched horses))]
-    (assoc horses number (Horse. new-pos true))))
+    (assoc horses n (Horse. new-pos true))))
+
+(defn winner
+  [horses]
+  (first (filter (fn [[n horse]]
+                   (and (not (:scratched? horse))
+                        (= (:position horse) (finish-line n))))
+                 horses)))
 
 ;; Game functions
-(defn new-game
-  [names chips cards rolls]
-  (Game. 0
-         (deal-cards (map #(Player. % chips nil) names) cards)
-         (zipmap ranks (repeat (Horse. 0 false)))
-         rolls))
-
-(defn reset-game
+(defn new-race
   [game cards]
   (assoc game
-    :pot 0
-    :players (deal-cards (:players game) cards)))
+    :players (deal-cards (:players game) cards)
+    :horses (zipmap ranks (repeat (Horse. 0 false)))))
+
+(defn new-game
+  [names chips cards rolls]
+  (new-race (Game. 0
+                   (map #(Player. % chips nil) names)
+                   nil
+                   rolls)
+            cards))
 
 (defn advance-player
   [game]
@@ -93,7 +128,7 @@
       :pot (+ pot payment)
       :players (assoc players 0 paid-player))))
 
-(defn advance-horse
+(defn move-horse
   [game]
   (let [roll (first (:rolls game))]
     (update-in game [:horses roll :position] inc)))
@@ -103,7 +138,28 @@
   (let [{:keys [players horses rolls]} game
         player (first players)
         horse (horses (first rolls))]
-    (cond (zero? (:chips player))        (advance-player game)
+    (cond (dead? player)                 (advance-player game)
           (:scratched? horse)            (advance-turn (pay-scratch game))
-          (= 4 (count-scratched horses)) (advance-turn (advance-horse game))
-          :else                          (advance-turn (new-scratch game)))))
+          (< (count-scratched horses) 4) (advance-turn (new-scratch game))
+          :else                          (advance-turn (move-horse game)))))
+
+(defn race-over?
+  [game]
+  (let [{:keys [players horses]} game]
+    (or (every? dead? players)
+        (winner horses))))
+
+(defn split-pot
+  [game]
+  (let [{:keys [pot players horses]} game
+        winner-num (key (winner horses))
+        [paid-players remaining-pot] (pay-pot players winner-num pot)]
+    (assoc game
+      :pot remaining-pot
+      :players paid-players)))
+
+(defn play-race
+  [game]
+  (let [turns (iterate play-turn game)
+        [race-turns [final-turn]] (split-with #(not (race-over? %)) turns)]
+    (concat race-turns [final-turn] [(split-pot final-turn)])))
