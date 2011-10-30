@@ -38,7 +38,7 @@
   [player cost]
   (let [chips (:chips player)
         payment (if (< chips cost) chips cost)
-        new-chips (if (< chips cost) 0 (- chips cost))]
+        new-chips (if (< chips cost) 0.0 (- chips cost))]
     [(assoc player :chips new-chips) payment]))
 
 (defn pay-card
@@ -53,7 +53,7 @@
 (defn pay-share
   [player share]
   (if (dead? player)
-    [player 0]
+    [player 0.0]
     [(update-in player [:chips] + share) share]))
 
 (defn pay-pot
@@ -84,7 +84,7 @@
                  horses)))
 
 ;; Game functions
-(defn new-race
+(defn reset-game
   [game cards]
   (assoc game
     :players (deal-cards (:players game) cards)
@@ -92,11 +92,11 @@
 
 (defn new-game
   [names chips cards rolls]
-  (new-race (Game. 0
-                   (map #(Player. % chips nil) names)
-                   nil
-                   rolls)
-            cards))
+  (reset-game (Game. 0.0
+                     (map #(Player. % chips nil) names)
+                     nil
+                     rolls)
+              cards))
 
 (defn advance-player
   [game]
@@ -111,7 +111,7 @@
   [game]
   (let [{:keys [pot players horses rolls]} game
         new-pos (inc (count-scratched horses))
-        cost (* 5 new-pos)
+        cost (* 5.0 new-pos)
         roll (first rolls)
         [paid-players payment] (pay-card players roll cost)]
     (assoc game
@@ -122,7 +122,7 @@
 (defn pay-scratch
   [game]
   (let [{:keys [pot players horses rolls]} game
-        cost (* 5 (:position (horses (first rolls))))
+        cost (* 5.0 (:position (horses (first rolls))))
         [paid-player payment] (pay-cost (first players) cost)]
     (assoc game
       :pot (+ pot payment)
@@ -162,4 +162,6 @@
   [game]
   (let [turns (iterate play-turn game)
         [race-turns [final-turn]] (split-with #(not (race-over? %)) turns)]
-    (concat race-turns [final-turn] [(split-pot final-turn)])))
+    (if (winner (:horses final-turn))
+      (concat race-turns [final-turn] [(split-pot final-turn)])
+      (concat race-turns [final-turn]))))
