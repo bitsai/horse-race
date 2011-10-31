@@ -14,16 +14,26 @@
                  (format "%1$2s" n)
                  (if scratched?
                    (* 5 position)
-                   (apply str (concat before ["X"] after))))))))
+                   (apply str (concat before ["X"] after))))))
+    (newline)))
+
+(defn get-names
+  []
+  (println "Enter player names:")
+  (str/split (read-line) #"\s*,\s*"))
+
+(defn get-chips
+  []
+  (println "Enter starting chips:")
+  (Double/parseDouble (read-line)))
 
 (defn play-game
   []
-  (println "Enter player names:")
-  (let [names (str/split (read-line) #"\s*,\s*")
-        starting-chips 200
+  (let [names (get-names)
+        chips (get-chips)
         cards (shuffle core/deck)
         rolls (repeatedly core/roll-dice)]
-    (loop [game (core/new-game names starting-chips cards rolls)]
+    (loop [game (core/new-game names chips cards rolls)]
       (let [race (core/play-race game)]
         (print-race race)
         (println "Enter 'y' to play again:")
